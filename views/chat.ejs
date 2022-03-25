@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="English">
+<head>
+    <title>Socket.IO chat</title>
+    <style>
+        body {
+            margin: 0;
+            padding-bottom: 3rem;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+            Helvetica, Arial, sans-serif;
+        }
+
+        #form {
+            background: rgba(0, 0, 0, 0.15);
+            padding: 0.25rem;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            height: 3rem;
+            box-sizing: border-box;
+            backdrop-filter: blur(10px);
+        }
+        #input {
+            width: 60%;
+            border: none;
+            padding: 0 1rem;
+            flex-grow: 1;
+            border-radius: 2rem;
+            margin: 0.25rem;
+        }
+        #input:focus {
+            outline: none;
+        }
+        .sendButton {
+            background: #333;
+            border: none;
+            padding: 0 1rem;
+            margin: 0.25rem;
+            border-radius: 3px;
+            outline: none;
+            color: #fff;
+        }
+        .input-style {
+            border: none;
+            padding: 0 1rem;
+            flex-grow: 1;
+            border-radius: 2rem;
+            margin: 0.25rem;
+        }
+        .button-style-green {
+            color: #fff;
+            border: none;
+            padding: 0 1rem;
+            margin: 0.25rem;
+            border-radius: 3px;
+            outline: none;
+            background: rgb(34, 224, 16);
+            height: 30px;
+        }
+        .button-style-red {
+            color: #fff;
+            border: none;
+            padding: 0 1rem;
+            margin: 0.25rem;
+            border-radius: 3px;
+            outline: none;
+            background: rgb(207, 26, 26);
+            height: 30px;
+        }
+
+        .input-style:focus {
+            outline: none;
+        }
+        #messages {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+        #messages > li {
+            padding: 0.5rem 1rem;
+        }
+        #messages > li:nth-child(odd) {
+            background: #efefef;
+        }
+    </style>
+</head>
+<body>
+<ul id="messages"></ul>
+<form id="form" action="">
+    <input placeholder="Enter your username here!" id="usernameInput" class="input-style" autocomplete="off"/>
+    <p id="usernameHere"></p>
+    <button class="sendButton">Send</button>
+    <button style="float: right;" class="button-style-red" id="toggleNotifications" type="button"/>
+</form>
+Notifications
+</button>
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+    const username = require(__dirname + '/index.js')
+    console.log(username)
+	var notifnum;
+	var socket = io();
+	var notificationsOn = false;
+	var messages = document.getElementById("messages");
+	var form = document.getElementById("form");
+	var input = document.getElementById("input");
+	var notificationButton = document.getElementById("toggleNotifications");
+	notificationButton.addEventListener("click", function (e) {
+		if (notificationsOn == true) {
+			notificationsOn = false;
+			notificationButton.classList.remove("button-style-green");
+			notificationButton.classList.add("button-style-red");
+		} else {
+			if (Notification.permission == "default") {
+				Notification.requestPermission().then(function(result) {
+					if (result == "granted") {
+						notificationsOn = true;
+						notificationButton.classList.add("button-style-green");
+						notificationButton.classList.remove("button-style-red");
+					}
+				});
+				if (Notification.permission == "granted") {
+					notificationsOn = true;
+					notificationButton.classList.add("button-style-green");
+					notificationButton.classList.remove("button-style-red");
+				}
+			} else if (Notification.permission == "denied") {
+				alert("Please allow notifications!");
+			}
+			if (Notification.permission == "granted") {
+				notificationsOn = true;
+				notificationButton.classList.add("button-style-green");
+				notificationButton.classList.remove("button-style-red");
+			}
+		}
+	});
+
+	form.addEventListener("submit", function (e) {
+		e.preventDefault();
+		if (input.value && username) {
+			socket.emit("chat message", username + ": " + input.value);
+			input.value = "";
+		} else {
+			alert("Please ensure you are signed in!");
+		}
+	});
+
+	socket.on("chat message", function (msg) {
+		var item = document.createElement("li");
+		item.textContent = msg;
+		sendNotification(msg);
+		messages.appendChild(item);
+		window.scrollTo(0, document.body.scrollHeight);
+	});
+
+	function sendNotification(msg) {
+		if (
+			(Notification.permission == "granted" &&
+				notificationsOn == true &&
+				document.visibilityState === "hidden") ||
+			(document.visibilityState === "prerender" && notificationsOn == true)
+		) {
+			var n = new Notification(msg, { tag: notifnum });
+		}
+	}
+	document.addEventListener("visibilitychange", function () {
+		if (document.visibilityState === "visible") {
+			n.close();
+		}
+	});
+</script>
+</body>
+</html>
