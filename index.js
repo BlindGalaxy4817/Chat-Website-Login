@@ -1,20 +1,37 @@
 const express = require("express")
-const app = express()
+const app = require("express")()
+const http = require("http").Server(app);
+const crypto = require('crypto')
+const io = require("socket.io")(http);
 require("dotenv").config()
+
+app.set('view engine', 'ejs')
+const ejs = require('ejs');
+
 const bcrypt = require("bcrypt")
 const generateAccessToken = require("./generateAccessToken")
-var cookieParser = require('cookie-parser');
+const cookieParser = require('cookie-parser');
+const sessions = require("express-session");
+const path = require("path")
+const oneDay = 1000 * 60 * 60 * 24
+var session
+app.use(sessions({
+	secret: crypto.randomBytes(20).toString("hex"),
+	resave: false,
+	saveUninitialized: true,
+	cookie: {maxAge: oneDay}
+}));
 app.use(cookieParser());
 
-const DB_HOST = "localhost"
-const DB_USER = "newuser"
-const DB_PASSWORD = "HuckleCharlie17!"
-const DB_DATABASE = "logindb"
-const DB_PORT = 3306
-const port = 3000
+const DB_HOST = process.env.DB_HOST
+const DB_USER = process.env.DB_USER
+const DB_PASSWORD = process.env.DB_PASSWORD
+const DB_DATABASE = process.env.DB_DATABASE
+const DB_PORT = process.env.DB_PORT
+const port = process.env.PORT
 
-app.get("/", (req, res) => {
-	res.sendFile(path.join(__dirname, "views/login.html"))
+app.get('/', (req, res) => {
+	res.render('login')
 })
 
 const mysql = require("mysql")
@@ -33,9 +50,15 @@ db.getConnection( (err, connection)=> {
 	console.log( "DB connected successfully: " + connection.threadId)
 })
 
-app.listen(port, ()=> console.log(`Server Started on port ${port}`))
 
-app.use(express.json())
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname));
+
+http.listen(port, () => {
+	console.log(`Socket.IO server running at http://localhost:${port}/`);
+})
 
 //used https://medium.com/@prashantramnyc/a-simple-registration-and-login-backend-using-nodejs-and-mysql-967811509a64 as tutorial
 app.post("/createUser", async (req, res) => {
@@ -90,6 +113,15 @@ app.post("/login", (req, res)=> {
 				//get the hashedPassword from result
 				if (await bcrypt.compare(password, hashedPassword)) {
 					console.log("---------> Login Successful")
+					//setup session
+					session = req.session;
+					session.userid = user
+					console.log(req.session)
+					//TODO each time user logs in, remove old and set a new session id, then add a new cookie to store it
+					const sqlSearch = "SELECT * FROM usertable WHERE user = ?"
+					const search_query = mysql.format(sqlSearch,[user])
+					const sqlInsert = "INSERT INTO usertable VALUES (0,?,?)"
+					const insert_query = mysql.format(sqlInsert,[user, hashedPassword])
 					res.render('chat', {username: user})
 				}
 				else {
@@ -99,6 +131,11 @@ app.post("/login", (req, res)=> {
 			}
 		})
 	})
+})
+
+app.post('/logout', (req, res) => {
+	req.session.destroy();
+	res.redirect('/');
 })
 
 //auth with access token for later if I decide to use cookies to store auth token
@@ -135,3 +172,9 @@ app.post("/login", (req, res)=> {
 }) //end of app.post()
 
 */
+io.on("connection", (socket) => {
+	socket.on("chat message", (msg) => {
+		io.emit("chat message", msg);
+	});
+});
+
