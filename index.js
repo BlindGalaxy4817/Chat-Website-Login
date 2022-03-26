@@ -116,12 +116,22 @@ app.post("/login", (req, res)=> {
 					//setup session
 					session = req.session;
 					session.userid = user
-					console.log(req.session)
+					console.log()
+					console.log(session)
+					db.getConnection ( async (err, connection)=> {
+						if (err) throw (err)
+						var sqlUpdate = "UPDATE usertable SET sessionid = ? WHERE user = ?;"
+						console.log(req.cookies['connect.sid'])
+						var sessionId = req.cookies['connect.sid'];
+						//TODO read contents of session cookie and write those to database rather than weird thing.
+						const search_query = mysql.format(sqlUpdate,[sessionId, user])
+						await connection.query (search_query, async (err, result) => {
+
+							connection.release()
+						})
+					})
 					//TODO each time user logs in, remove old and set a new session id, then add a new cookie to store it
-					const sqlSearch = "SELECT * FROM usertable WHERE user = ?"
-					const search_query = mysql.format(sqlSearch,[user])
-					const sqlInsert = "INSERT INTO usertable VALUES (0,?,?)"
-					const insert_query = mysql.format(sqlInsert,[user, hashedPassword])
+
 					res.render('chat', {username: user})
 				}
 				else {
@@ -134,8 +144,13 @@ app.post("/login", (req, res)=> {
 })
 
 app.post('/logout', (req, res) => {
+	res.send("logging out")
 	req.session.destroy();
 	res.redirect('/');
+})
+
+app.post('/authUser', (req, res) => {
+	console.log(req.session);
 })
 
 //auth with access token for later if I decide to use cookies to store auth token

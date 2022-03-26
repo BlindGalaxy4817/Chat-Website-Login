@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="english">
 <head>
     <title>Socket.IO chat</title>
     <style>
@@ -95,54 +95,50 @@
             class="input-style"
             autocomplete="off"
     />
-    <input
-            placeholder="Type your message here!"
-            id="input"
-            autocomplete="off"
-    /><button class="sendButton">Send</button>
-    <button
-            style="float: right;"
-            class="button-style-red"
-            id="toggleNotifications"
-            type="button"
-    />
+    <input placeholder="Type your message here!" id="input" autocomplete="off"/>
+    <button class="sendButton">Send</button>
+    <button style="float: right;" class="button-style-red" id="toggleNotifications" type="button">
+        Notifications
+    </button>
 </form>
-Notifications
-</button>
+
 <script src="/socket.io/socket.io.js"></script>
 
 <script>
+    var n;
 	var notifnum;
-	var socket = io();
+	const socket = io();
 	var notificationsOn = false;
-	var messages = document.getElementById("messages");
-	var form = document.getElementById("form");
-	var input = document.getElementById("input");
-	var usernameInput = document.getElementById("usernameInput");
-	var notificationButton = document.getElementById("toggleNotifications");
+	const messages = document.getElementById("messages");
+	const form = document.getElementById("form");
+	const input = document.getElementById("input");
+	const usernameInput = document.getElementById("usernameInput");
+	const notificationButton = document.getElementById("toggleNotifications");
+	var username = "<%= username  %>";
+	console.log(username)
 	notificationButton.addEventListener("click", function (e) {
-		if (notificationsOn == true) {
+		if (notificationsOn === true) {
 			notificationsOn = false;
 			notificationButton.classList.remove("button-style-green");
 			notificationButton.classList.add("button-style-red");
 		} else {
-			if (Notification.permission == "default") {
+			if (Notification.permission === "default") {
 				Notification.requestPermission().then(function(result) {
-					if (result == "granted") {
+					if (result === "granted") {
 						notificationsOn = true;
 						notificationButton.classList.add("button-style-green");
 						notificationButton.classList.remove("button-style-red");
 					}
 				});
-				if (Notification.permission == "granted") {
+				if (Notification.permission === "granted") {
 					notificationsOn = true;
 					notificationButton.classList.add("button-style-green");
 					notificationButton.classList.remove("button-style-red");
 				}
-			} else if (Notification.permission == "denied") {
+			} else if (Notification.permission === "denied") {
 				alert("Please allow notifications!");
 			}
-			if (Notification.permission == "granted") {
+			if (Notification.permission === "granted") {
 				notificationsOn = true;
 				notificationButton.classList.add("button-style-green");
 				notificationButton.classList.remove("button-style-red");
@@ -170,12 +166,13 @@ Notifications
 
 	function sendNotification(msg) {
 		if (
-			(Notification.permission == "granted" &&
-				notificationsOn == true &&
+			(Notification.permission === "granted" &&
+				notificationsOn === true &&
 				document.visibilityState === "hidden") ||
 			document.visibilityState === "prerender"
 		) {
-			var n = new Notification(msg, { tag: notifnum });
+			n = new Notification(msg, { tag: notifnum });
+			notifnum++;
 		}
 	}
 	document.addEventListener("visibilitychange", function () {
@@ -183,6 +180,10 @@ Notifications
 			n.close();
 		}
 	});
+
+	function authUsername() {
+
+	}
 </script>
 </body>
 </html>
