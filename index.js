@@ -1,63 +1,49 @@
+require("dotenv").config()
 const express = require("express")
 const app = require("express")()
 const http = require("http").Server(app);
-const crypto = require('crypto')
 const io = require("socket.io")(http);
-require("dotenv").config()
-
-app.set('view engine', 'ejs')
-const ejs = require('ejs');
-
+const port = process.env.PORT
+const path = require("path")
+const crypto = require('crypto')
 const bcrypt = require("bcrypt")
 const generateAccessToken = require("./generateAccessToken")
 const cookieParser = require('cookie-parser');
 const sessions = require("express-session");
-const path = require("path")
+const ejs = require('ejs');
+const mysql = require("mysql")
 const oneDay = 1000 * 60 * 60 * 24
-var session
+
+const db = mysql.createPool({
+	connectionLimit: 100,
+	host: process.env.DB_HOST,
+	user: process.env.DB_USER,
+	password: process.env.DB_PASSWORD,
+	database: process.env.DB_DATABASE,
+	port: process.env.DB_PORT
+});
+
+app.set('view engine', 'ejs')
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname));
+
 app.use(sessions({
 	secret: crypto.randomBytes(20).toString("hex"),
 	resave: false,
 	saveUninitialized: true,
-	cookie: {maxAge: oneDay}
+	cookie: { maxAge: oneDay }
 }));
 app.use(cookieParser());
-
-const DB_HOST = process.env.DB_HOST
-const DB_USER = process.env.DB_USER
-const DB_PASSWORD = process.env.DB_PASSWORD
-const DB_DATABASE = process.env.DB_DATABASE
-const DB_PORT = process.env.DB_PORT
-const port = process.env.PORT
-
-app.get('/', (req, res) => {
-	res.render('login')
-})
-
-const mysql = require("mysql")
-
-const db = mysql.createPool({
-	connectionLimit: 100,
-	host: DB_HOST,
-	user: DB_USER,
-	password: DB_PASSWORD,
-	database: DB_DATABASE,
-	port: DB_PORT
-});
 
 db.getConnection( (err, connection)=> {
 	if (err) throw (err)
 	console.log( "DB connected successfully: " + connection.threadId)
 })
 
-
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(__dirname));
-
-http.listen(port, () => {
-	console.log(`Socket.IO server running at http://localhost:${port}/`);
+app.get('/', (req, res) => {
+	res.render('login')
 })
 
 //used https://medium.com/@prashantramnyc/a-simple-registration-and-login-backend-using-nodejs-and-mysql-967811509a64 as tutorial
@@ -114,7 +100,7 @@ app.post("/login", (req, res)=> {
 				if (await bcrypt.compare(password, hashedPassword)) {
 					console.log("---------> Login Successful")
 					//setup session
-					session = req.session;
+					var session = req.session;
 					session.userid = user
 					console.log()
 					console.log(session)
@@ -193,3 +179,6 @@ io.on("connection", (socket) => {
 	});
 });
 
+http.listen(port, () => {
+	console.log(`Socket.IO server running at http://localhost:${port}/`);
+})
